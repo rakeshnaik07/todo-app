@@ -1,40 +1,26 @@
-const express = require('express');
+const path = require("path");
+require("dotenv").config({ path: path.join(__dirname, ".env") });
+
+const express = require("express");
+const cors = require("cors");
 
 const app = express();
 
-const taskRoutes = require('./routes/taskRoutes');
+const taskRoutes = require("./routes/taskRoutes");
+const userRoutes = require("./routes/userRoutes");
 
 const PORT = 3000;
 
-const cors = require("cors");
-
 app.use(cors());
-
 app.use(express.json());
 
-app.get('/', (req, res) => {
-    res.send('Server is Live');
+app.get("/", (req, res) => {
+  return res.send("Server is Live");
 });
 
-app.use('/tasks', taskRoutes);
-
-
-const pool = require('./config/db');
-
-async function testDB() {
-    try {
-        const connection = await pool.getConnection();
-
-        console.log('Database Connected Successfully');
-
-        connection.release();
-    } catch (error) {
-        console.log(error.message);
-    }
-}
-
-testDB();
+app.use("/tasks", taskRoutes);
+app.use("/users", userRoutes);
 
 app.listen(PORT, () => {
-    console.log(`Todo server is running on http://localhost:${PORT}`);
+  console.log(`Todo server is running on http://localhost:${PORT}`);
 });

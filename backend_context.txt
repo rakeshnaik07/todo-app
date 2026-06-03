@@ -1,0 +1,1209 @@
+backend_context.txt
+
+1. Project Overview
+
+Purpose of the application:
+- This backend is the API server for a To-Do application.
+- It allows users to register, log in, receive a JWT, and manage their own task records.
+- Task data is stored in MySQL and is scoped to the authenticated user.
+
+Current functionality:
+- Public root health/live route: GET /
+- Public user registration: POST /users/register
+- Public user login: POST /users/login
+- Protected task listing: GET /tasks
+- Protected task creation: POST /tasks
+- Protected task update: PUT /tasks/:id
+- Protected task deletion: DELETE /tasks/:id
+- Password hashing with bcrypt before storing user passwords.
+- JWT generation during login.
+- JWT verification middleware for every task route.
+- User-specific task authorization through SQL WHERE clauses using req.user.id.
+
+Main workflow:
+1. Client registers a user with username, email, and password.
+2. Backend checks whether the email already exists.
+3. Backend hashes the password using bcrypt with 10 salt rounds.
+4. Backend stores the new user in the users table.
+5. Client logs in with email and password.
+6. Backend verifies the password with bcrypt.compare.
+7. Backend signs a JWT containing the user id and email.
+8. Client sends the JWT in the Authorization header as Bearer <token>.
+9. authMiddleware verifies the token and attaches the decoded payload to req.user.
+10. Task controllers use req.user.id to read, create, update, and delete only that user's tasks.
+
+2. Tech Stack
+
+Runtime:
+- Node.js.
+- The package uses CommonJS modules: "type": "commonjs".
+- The exact Node.js version is not pinned in package.json.
+- bcrypt 6.0.0 requires Node >= 18 according to its installed package metadata.
+
+Framework:
+- Express 5.2.1.
+- Express JSON body parser via app.use(express.json()).
+- CORS middleware via app.use(cors()).
+
+Database:
+- MySQL.
+- mysql2 3.22.4, using the promise API: require("mysql2/promise").
+- A MySQL connection pool is created in backend/config/db.js.
+- The configured database name in the current .env is todo_app.
+
+Authentication:
+- bcrypt 6.0.0 for password hashing and password comparison.
+- jsonwebtoken 9.0.3 for JWT signing and verification.
+- JWT secret is read from process.env.JWT_SECRET.
+- JWT expiry is currently hardcoded to 1 day during login.
+
+Libraries used:
+- express: HTTP server, routing, middleware pipeline.
+- cors: enables cross-origin requests with default permissive settings.
+- dotenv: loads environment variables from .env.
+- mysql2: MySQL database driver and connection pool.
+- bcrypt: password hashing and verification.
+- jsonwebtoken: JWT generation and verification.
+
+Package scripts:
+- npm start: runs node index.js.
+- npm test: currently prints "Error: no test specified" and exits with status 1.
+
+3. Folder Structure
+
+Tree view of backend folder, excluding node_modules internals:
+
+backend/
+  .env
+  .gitignore
+  index.js
+  package.json
+  package-lock.json
+  config/
+    db.js
+  controllers/
+    taskController.js
+    userController.js
+  middleware/
+    authMiddleware.js
+  routes/
+    taskRoutes.js
+    userRoutes.js
+  node_modules/
+    generated dependency directory, ignored for architecture documentation
+
+Purpose of each folder and file:
+
+backend/.env
+- Stores runtime configuration and secrets.
+- Current keys present: DB_HOST, DB_USER, DB_PASSWORD, DB_NAME, DB_PORT, JWT_SECRET.
+- DB_PORT is present but is not used by backend/config/db.js.
+- Secret values should not be committed or shared.
+
+backend/.gitignore
+- Ignores node_modules, .env, backend/node_modules, and dist.
+
+backend/index.js
+- Main application entry point.
+- Loads dotenv from backend/.env using an explicit path based on __dirname.
+- Creates the Express app.
+- Registers global middleware: cors() and express.json().
+- Defines GET / live route.
+- Mounts task routes at /tasks.
+- Mounts user routes at /users.
+- Starts the server on hardcoded port 3000.
+
+backend/package.json
+- Defines project metadata, scripts, CommonJS module type, and dependencies.
+
+backend/package-lock.json
+- Locks installed dependency versions.
+
+backend/config/db.js
+- Loads dotenv using default dotenv behavior.
+- Creates and exports a mysql2 promise connection pool.
+- Pool settings:
+  - host: process.env.DB_HOST
+  - user: process.env.DB_USER
+  - password: process.env.DB_PASSWORD
+  - database: process.env.DB_NAME
+  - waitForConnections: true
+  - connectionLimit: 10
+- Does not currently use DB_PORT even though DB_PORT exists in .env.
+
+backend/controllers/userController.js
+- Exports register and login controller functions.
+- Handles user creation, duplicate email checks, bcrypt hashing, password comparison, and JWT signing.
+
+backend/controllers/taskController.js
+- Exports getAllTasks, createTask, updateTask, and deleteTask.
+- Handles task CRUD operations.
+- All task operations depend on req.user.id being set by authMiddleware.
+
+backend/middleware/authMiddleware.js
+- Verifies Authorization: Bearer <token>.
+- Uses jwt.verify with process.env.JWT_SECRET.
+- Attaches decoded JWT payload to req.user.
+- Returns 401 responses for missing, malformed, or invalid tokens.
+
+backend/routes/userRoutes.js
+- Creates an Express router.
+- Maps POST /register to userController.register.
+- Maps POST /login to userController.login.
+- Mounted by index.js at /users.
+
+backend/routes/taskRoutes.js
+- Creates an Express router.
+- Applies authMiddleware to every active task route.
+- Maps GET / to taskController.getAllTasks.
+- Maps POST / to taskController.createTask.
+- Maps PUT /:id to taskController.updateTask.
+- Maps DELETE /:id to taskController.deleteTask.
+- Contains a commented-out route for GET /:id, but no getTaskById implementation is currently active.
+
+4. Database Documentation
+
+Database source of truth:
+- No migration file, schema file, ORM model, or seed file exists in the backend folder.
+- The schema below was verified from the configured MySQL database with a read-only schema query.
+- Application code expects two tables: users and tasks.
+
+Current database:
+- DB_NAME from .env: todo_app.
+- Engine shown by current tables: InnoDB.
+- Charset/collation shown by current tables: utf8mb4 / utf8mb4_0900_ai_ci.
+
+Table: users
+
+Columns:
+- id
+  - Type: int
+  - Nullable: no
+  - Key: primary key
+  - Extra: auto_increment
+  - Used as the user identifier in JWT payloads and task ownership checks.
+- username
+  - Type: varchar(100)
+  - Nullable: no
+  - Stored from req.body.username during registration.
+- email
+  - Type: varchar(255)
+  - Nullable: no
+  - Key: unique
+  - Used for registration duplicate checks and login lookup.
+- password
+  - Type: varchar(255)
+  - Nullable: no
+  - Stores the bcrypt password hash, not the raw password.
+
+Constraints and indexes:
+- PRIMARY KEY (id)
+- UNIQUE KEY email (email)
+- No explicit created_at or updated_at columns.
+- No role, status, verification, reset token, or profile fields.
+
+Current SHOW CREATE TABLE output:
+
+```sql
+CREATE TABLE `users` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `username` varchar(100) NOT NULL,
+  `email` varchar(255) NOT NULL,
+  `password` varchar(255) NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `email` (`email`)
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
+```
+
+Table: tasks
+
+Columns:
+- id
+  - Type: int
+  - Nullable: no
+  - Key: primary key
+  - Extra: auto_increment
+  - Used as the task identifier in update and delete endpoints.
+- task
+  - Type: varchar(255)
+  - Nullable: no
+  - Stores the task text from req.body.task.
+- user_id
+  - Type: int
+  - Nullable: yes
+  - Stores the owner user id assigned by createTask from req.user.id.
+  - Application code treats this as a reference to users.id.
+
+Constraints and indexes:
+- PRIMARY KEY (id)
+- No foreign key constraint from tasks.user_id to users.id.
+- No index currently exists on tasks.user_id.
+- user_id is nullable at the database level, even though protected createTask always inserts req.user.id.
+- No completed/status, due_date, priority, created_at, or updated_at columns.
+
+Current SHOW CREATE TABLE output:
+
+```sql
+CREATE TABLE `tasks` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `task` varchar(255) NOT NULL,
+  `user_id` int DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
+```
+
+Relationships:
+- Logical relationship: tasks.user_id is intended to reference users.id.
+- Database-enforced relationship: none.
+- Ownership is enforced in controller SQL, not by a foreign key.
+
+Database operations used by current code:
+- SELECT * FROM users WHERE email = ?
+- INSERT INTO users (username, email, password) VALUES (?, ?, ?)
+- SELECT * FROM tasks WHERE user_id = ?
+- INSERT INTO tasks(task, user_id) VALUES (?, ?)
+- UPDATE tasks SET task = ? WHERE id = ? AND user_id = ?
+- DELETE FROM tasks WHERE id = ? AND user_id = ?
+
+5. API Documentation
+
+Base URL during local development:
+- http://localhost:3000
+- Port is hardcoded in index.js as const PORT = 3000.
+
+Global middleware:
+- cors() is enabled for all routes with default settings.
+- express.json() is enabled for JSON request bodies.
+
+Route: GET /
+
+Purpose:
+- Basic live route.
+
+Method:
+- GET
+
+Endpoint:
+- /
+
+Headers required:
+- None.
+
+Request body:
+- None.
+
+Successful response:
+- Status: 200
+- Content type is Express default for res.send string.
+
+Example response:
+
+```text
+Server is Live
+```
+
+Error responses:
+- No custom error handling is implemented for this route.
+
+Route: POST /users/register
+
+Purpose:
+- Registers a new user.
+
+Method:
+- POST
+
+Endpoint:
+- /users/register
+
+Headers required:
+- Content-Type: application/json
+- Authorization is not required.
+
+Request body:
+
+```json
+{
+  "username": "Rakesh",
+  "email": "rakesh@example.com",
+  "password": "plainTextPassword"
+}
+```
+
+Successful response:
+- Status: 201
+
+Example response:
+
+```json
+{
+  "message": "User Registered"
+}
+```
+
+Error responses:
+- Duplicate email:
+- Status: 400
+
+```json
+{
+  "message": "Email already exists"
+}
+```
+
+- Server/database/hash error:
+- Status: 500
+
+```json
+{
+  "message": "Server Error"
+}
+```
+
+Implementation details:
+- Reads username, email, and password from req.body.
+- Runs SELECT * FROM users WHERE email = ?.
+- If any row is returned, responds with 400.
+- Hashes password with bcrypt.hash(password, 10).
+- Inserts username, email, and hashedPassword into users.
+- Does not return a JWT after registration.
+- Does not return the created user id.
+- Does not explicitly validate missing fields, email format, or password strength.
+
+Route: POST /users/login
+
+Purpose:
+- Authenticates a user and returns a JWT.
+
+Method:
+- POST
+
+Endpoint:
+- /users/login
+
+Headers required:
+- Content-Type: application/json
+- Authorization is not required.
+
+Request body:
+
+```json
+{
+  "email": "rakesh@example.com",
+  "password": "plainTextPassword"
+}
+```
+
+Successful response:
+- Status: 200
+
+Example response:
+
+```json
+{
+  "message": "Login Successful",
+  "token": "<jwt_token>"
+}
+```
+
+Error responses:
+- Email not found:
+- Status: 404
+
+```json
+{
+  "message": "User not found"
+}
+```
+
+- Password mismatch:
+- Status: 401
+
+```json
+{
+  "message": "Invalid Credentials"
+}
+```
+
+- Server/database/JWT error:
+- Status: 500
+
+```json
+{
+  "message": "Server Error"
+}
+```
+
+Implementation details:
+- Reads email and password from req.body.
+- Runs SELECT * FROM users WHERE email = ?.
+- If no user is found, returns 404.
+- Compares submitted password with users.password using bcrypt.compare.
+- If comparison fails, returns 401.
+- Signs a JWT with payload:
+
+```json
+{
+  "id": 1,
+  "email": "rakesh@example.com"
+}
+```
+
+- JWT options:
+
+```json
+{
+  "expiresIn": "1d"
+}
+```
+
+- Runtime JWT also includes standard iat and exp claims added by jsonwebtoken.
+
+Shared authentication errors for protected task routes:
+
+- Missing Authorization header:
+- Status: 401
+
+```json
+{
+  "message": "No token provided"
+}
+```
+
+- Authorization header does not match Bearer <token>:
+- Status: 401
+
+```json
+{
+  "message": "Malformed authorization header"
+}
+```
+
+- JWT verification fails, token is expired, token is invalid, or JWT_SECRET does not match:
+- Status: 401
+
+```json
+{
+  "message": "Invalid Token"
+}
+```
+
+Route: GET /tasks
+
+Purpose:
+- Returns all tasks owned by the authenticated user.
+
+Method:
+- GET
+
+Endpoint:
+- /tasks
+
+Headers required:
+- Authorization: Bearer <jwt_token>
+- Content-Type is not required because there is no request body.
+
+Request body:
+- None.
+
+Successful response:
+- Status: 200
+- Body: array of task rows returned by MySQL.
+
+Example response:
+
+```json
+[
+  {
+    "id": 1,
+    "task": "Buy milk",
+    "user_id": 1
+  },
+  {
+    "id": 2,
+    "task": "Finish project",
+    "user_id": 1
+  }
+]
+```
+
+Error responses:
+- 401 No token provided.
+- 401 Malformed authorization header.
+- 401 Invalid Token.
+- 500 Server Error:
+
+```json
+{
+  "message": "Server Error"
+}
+```
+
+Implementation details:
+- authMiddleware must run first.
+- Reads req.user.id from decoded JWT.
+- Runs SELECT * FROM tasks WHERE user_id = ?.
+- Returns the raw tasks array.
+- Does not paginate, sort, filter, or hide user_id.
+
+Route: POST /tasks
+
+Purpose:
+- Creates a task for the authenticated user.
+
+Method:
+- POST
+
+Endpoint:
+- /tasks
+
+Headers required:
+- Authorization: Bearer <jwt_token>
+- Content-Type: application/json
+
+Request body:
+
+```json
+{
+  "task": "Buy milk"
+}
+```
+
+Successful response:
+- Status: 201
+
+Example response:
+
+```json
+{
+  "message": "Task created",
+  "id": 9
+}
+```
+
+Error responses:
+- 401 No token provided.
+- 401 Malformed authorization header.
+- 401 Invalid Token.
+- 500 Server Error:
+
+```json
+{
+  "message": "Server Error"
+}
+```
+
+Implementation details:
+- authMiddleware must run first.
+- Reads task from req.body.task.
+- Reads userId from req.user.id.
+- Runs INSERT INTO tasks(task, user_id) VALUES (?, ?).
+- Returns result.insertId as id.
+- Ignores any user_id sent in the request body.
+- Does not explicitly validate missing task, empty task, or task length.
+
+Route: PUT /tasks/:id
+
+Purpose:
+- Updates the task text for a task owned by the authenticated user.
+
+Method:
+- PUT
+
+Endpoint:
+- /tasks/:id
+
+Headers required:
+- Authorization: Bearer <jwt_token>
+- Content-Type: application/json
+
+Path parameters:
+- id: task id to update.
+
+Request body:
+
+```json
+{
+  "task": "Buy almond milk"
+}
+```
+
+Successful response:
+- Status: 200
+
+Example response:
+
+```json
+{
+  "message": "Task Updated"
+}
+```
+
+Error responses:
+- Task id does not exist or does not belong to authenticated user:
+- Status: 404
+
+```json
+{
+  "message": "Task not found"
+}
+```
+
+- 401 No token provided.
+- 401 Malformed authorization header.
+- 401 Invalid Token.
+- 500 Server Error:
+
+```json
+{
+  "message": "Server Error"
+}
+```
+
+Implementation details:
+- authMiddleware must run first.
+- Reads taskId from req.params.id.
+- Reads task from req.body.task.
+- Reads userId from req.user.id.
+- Runs UPDATE tasks SET task = ? WHERE id = ? AND user_id = ?.
+- If result.affectedRows is 0, returns 404.
+- Only the task text can be changed.
+- id and user_id cannot be changed through this endpoint.
+
+Route: DELETE /tasks/:id
+
+Purpose:
+- Deletes a task owned by the authenticated user.
+
+Method:
+- DELETE
+
+Endpoint:
+- /tasks/:id
+
+Headers required:
+- Authorization: Bearer <jwt_token>
+- Content-Type is not required because there is no request body.
+
+Path parameters:
+- id: task id to delete.
+
+Request body:
+- None.
+
+Successful response:
+- Status: 200
+
+Example response:
+
+```json
+{
+  "message": "Task Deleted"
+}
+```
+
+Error responses:
+- Task id does not exist or does not belong to authenticated user:
+- Status: 404
+
+```json
+{
+  "message": "Task not found"
+}
+```
+
+- 401 No token provided.
+- 401 Malformed authorization header.
+- 401 Invalid Token.
+- 500 Server Error:
+
+```json
+{
+  "message": "Server Error"
+}
+```
+
+Implementation details:
+- authMiddleware must run first.
+- Reads taskId from req.params.id.
+- Reads userId from req.user.id.
+- Runs DELETE FROM tasks WHERE id = ? AND user_id = ?.
+- If results.affectedRows is 0, returns 404.
+- The endpoint intentionally uses the same 404 response for missing tasks and tasks owned by another user.
+
+6. Authentication Flow
+
+Registration:
+- POST /users/register is public.
+- register reads username, email, and password from req.body.
+- It queries users by email.
+- If the email already exists, it returns 400 with message "Email already exists".
+- If the email does not exist, it hashes the password and inserts a user row.
+- Successful registration returns 201 with message "User Registered".
+- Registration does not automatically log the user in.
+- Registration does not return a token.
+
+Password hashing:
+- Implemented with bcrypt.hash(password, 10).
+- The number 10 is the salt rounds value.
+- The stored users.password value is the bcrypt hash.
+- The raw password is not intentionally stored by the application.
+
+Login:
+- POST /users/login is public.
+- login reads email and password from req.body.
+- It queries users by email.
+- If no row is found, it returns 404 with message "User not found".
+- It compares the submitted password with the stored hash using bcrypt.compare.
+- If bcrypt.compare returns false, it returns 401 with message "Invalid Credentials".
+- If comparison succeeds, it signs a JWT.
+
+JWT generation:
+- Implemented with jwt.sign.
+- Payload includes:
+  - id: user.id
+  - email: user.email
+- Secret:
+  - process.env.JWT_SECRET
+- Options:
+  - expiresIn: "1d"
+- Response includes:
+  - message: "Login Successful"
+  - token: signed JWT string
+
+JWT verification:
+- Implemented in middleware/authMiddleware.js.
+- Reads req.headers.authorization or an empty string.
+- If missing, returns 401 "No token provided".
+- Splits the header by whitespace after trim().
+- Expects exactly the scheme Bearer and a token value.
+- If scheme is not exactly "Bearer" or token is missing, returns 401 "Malformed authorization header".
+- Calls jwt.verify(token, process.env.JWT_SECRET).
+- If verification succeeds, decoded payload is assigned to req.user.
+- If verification fails for any reason, returns 401 "Invalid Token".
+
+Middleware flow:
+1. Request enters Express.
+2. cors() runs.
+3. express.json() parses JSON bodies.
+4. Route matching occurs.
+5. Public user routes execute controllers directly.
+6. Protected task routes execute authMiddleware first.
+7. authMiddleware either returns a 401 response or calls next().
+8. Task controller executes with req.user available.
+9. Controller performs MySQL query through pool.
+10. Controller returns JSON response.
+
+7. Authorization Flow
+
+User-specific tasks:
+- Task ownership is represented by tasks.user_id.
+- The authenticated user id comes only from the verified JWT payload.
+- createTask sets tasks.user_id to req.user.id.
+- getAllTasks filters with WHERE user_id = req.user.id.
+- updateTask and deleteTask both include AND user_id = req.user.id.
+
+Ownership checks:
+- There is no separate ownership lookup.
+- Ownership is checked inside the UPDATE and DELETE SQL statements.
+- If affectedRows is 0, the API responds with 404 "Task not found".
+- This hides whether the task id does not exist or belongs to someone else.
+
+Update restrictions:
+- PUT /tasks/:id only updates the task column.
+- The SQL requires both id and user_id to match.
+- Users cannot update another user's task through the route if the JWT is valid and the secret is secure.
+- Users cannot update task id or user_id through this endpoint.
+
+Delete restrictions:
+- DELETE /tasks/:id only deletes rows where id and user_id both match.
+- Users cannot delete another user's task through the route if the JWT is valid and the secret is secure.
+- Non-owned tasks produce the same 404 response as missing tasks.
+
+Authorization limitations:
+- The database does not enforce the user/task relationship with a foreign key.
+- tasks.user_id is nullable.
+- There are no roles or admin permissions.
+- There is no route-level authorization beyond "is authenticated".
+- The JWT payload is trusted after verification; there is no additional user existence check on each protected request.
+
+8. Controllers Summary
+
+Controller: userController.register
+
+Purpose:
+- Create a new user account.
+
+Inputs:
+- req.body.username
+- req.body.email
+- req.body.password
+
+Outputs:
+- 201 { "message": "User Registered" }
+- 400 { "message": "Email already exists" }
+- 500 { "message": "Server Error" }
+
+Database operations:
+- SELECT * FROM users WHERE email = ?
+- INSERT INTO users (username, email, password) VALUES (?, ?, ?)
+
+Important behavior:
+- Checks email uniqueness before insert.
+- Hashes password using bcrypt.hash(password, 10).
+- Does not return inserted user id.
+- Does not generate JWT.
+- Does not log the caught error.
+
+Controller: userController.login
+
+Purpose:
+- Authenticate an existing user and issue a JWT.
+
+Inputs:
+- req.body.email
+- req.body.password
+
+Outputs:
+- 200 { "message": "Login Successful", "token": "<jwt_token>" }
+- 404 { "message": "User not found" }
+- 401 { "message": "Invalid Credentials" }
+- 500 { "message": "Server Error" }
+
+Database operations:
+- SELECT * FROM users WHERE email = ?
+
+Important behavior:
+- Uses bcrypt.compare(password, user.password).
+- JWT payload contains id and email.
+- JWT expires in 1 day.
+- Does not log the caught error.
+
+Controller: taskController.getAllTasks
+
+Purpose:
+- Return all tasks for the authenticated user.
+
+Inputs:
+- req.user.id
+
+Outputs:
+- 200 array of task rows.
+- 500 { "message": "Server Error" }
+- Authentication middleware may return 401 before this controller runs.
+
+Database operations:
+- SELECT * FROM tasks WHERE user_id = ?
+
+Important behavior:
+- Returns raw MySQL rows.
+- Filters only by user_id.
+- Does not sort results.
+
+Controller: taskController.createTask
+
+Purpose:
+- Create a new task owned by the authenticated user.
+
+Inputs:
+- req.body.task
+- req.user.id
+
+Outputs:
+- 201 { "message": "Task created", "id": result.insertId }
+- 500 { "message": "Server Error" }
+- Authentication middleware may return 401 before this controller runs.
+
+Database operations:
+- INSERT INTO tasks(task, user_id) VALUES (?, ?)
+
+Important behavior:
+- user_id is always taken from JWT, not request body.
+- Does not validate task text before insert.
+
+Controller: taskController.updateTask
+
+Purpose:
+- Update task text for an owned task.
+
+Inputs:
+- req.params.id
+- req.body.task
+- req.user.id
+
+Outputs:
+- 200 { "message": "Task Updated" }
+- 404 { "message": "Task not found" }
+- 500 { "message": "Server Error" }
+- Authentication middleware may return 401 before this controller runs.
+
+Database operations:
+- UPDATE tasks SET task = ? WHERE id = ? AND user_id = ?
+
+Important behavior:
+- Uses affectedRows to determine whether update succeeded.
+- Same 404 covers nonexistent task and non-owned task.
+
+Controller: taskController.deleteTask
+
+Purpose:
+- Delete an owned task.
+
+Inputs:
+- req.params.id
+- req.user.id
+
+Outputs:
+- 200 { "message": "Task Deleted" }
+- 404 { "message": "Task not found" }
+- 500 { "message": "Server Error" }
+- Authentication middleware may return 401 before this controller runs.
+
+Database operations:
+- DELETE FROM tasks WHERE id = ? AND user_id = ?
+
+Important behavior:
+- Uses affectedRows to determine whether delete succeeded.
+- Same 404 covers nonexistent task and non-owned task.
+
+9. Middleware Summary
+
+Middleware: cors()
+- Registered globally in index.js.
+- Current configuration uses cors() with no options.
+- This allows broad/default CORS behavior rather than restricting to a known frontend origin.
+
+Middleware: express.json()
+- Registered globally in index.js.
+- Parses JSON request bodies before route handlers.
+- No custom size limit is configured.
+
+Middleware: authMiddleware
+- Located at backend/middleware/authMiddleware.js.
+- Used only in backend/routes/taskRoutes.js.
+- All active /tasks routes are protected by it.
+- No /users routes are protected by it.
+
+authMiddleware request lifecycle:
+1. Reads Authorization header from req.headers.authorization.
+2. If no header exists, returns 401 with "No token provided".
+3. Trims and splits the header by whitespace.
+4. Expects the first token to be Bearer.
+5. Expects the second token to be the JWT.
+6. If the format is wrong, returns 401 with "Malformed authorization header".
+7. Verifies the token with jwt.verify(token, process.env.JWT_SECRET).
+8. If verification succeeds, stores decoded payload on req.user.
+9. Calls next().
+10. If verification throws, returns 401 with "Invalid Token".
+
+10. Current Application Flow
+
+User Registration
+-> Client sends POST /users/register with username, email, password.
+-> Backend checks users table for existing email.
+-> Backend hashes password.
+-> Backend inserts new user.
+-> Backend returns "User Registered".
+
+Login
+-> Client sends POST /users/login with email and password.
+-> Backend selects user by email.
+-> Backend compares password with bcrypt hash.
+-> Backend signs JWT if credentials are valid.
+-> Backend returns "Login Successful" and token.
+
+JWT Token
+-> Client stores token.
+-> Client sends token in Authorization: Bearer <token>.
+
+Protected Routes
+-> Request reaches /tasks route.
+-> authMiddleware verifies token.
+-> decoded JWT is assigned to req.user.
+
+CRUD Operations
+-> GET /tasks reads tasks where user_id equals req.user.id.
+-> POST /tasks creates task with user_id equal to req.user.id.
+-> PUT /tasks/:id updates task only if id and user_id match.
+-> DELETE /tasks/:id deletes task only if id and user_id match.
+
+11. Environment Variables
+
+Variables used by current code:
+
+DB_HOST
+- Used in backend/config/db.js as MySQL pool host.
+
+DB_USER
+- Used in backend/config/db.js as MySQL pool user.
+
+DB_PASSWORD
+- Used in backend/config/db.js as MySQL pool password.
+
+DB_NAME
+- Used in backend/config/db.js as MySQL pool database.
+
+JWT_SECRET
+- Used in userController.login for jwt.sign.
+- Used in authMiddleware for jwt.verify.
+- Required for login and protected route access to work.
+
+Variables present in current .env but not used by current code:
+
+DB_PORT
+- Present in .env.
+- Not passed into mysql.createPool.
+- Current code will use the mysql2 default port unless mysql2 configuration is changed.
+
+Port behavior:
+- No PORT environment variable is used.
+- index.js hardcodes const PORT = 3000.
+
+dotenv loading behavior:
+- index.js loads backend/.env explicitly with require("dotenv").config({ path: path.join(__dirname, ".env") }).
+- config/db.js also calls require("dotenv").config() with default behavior.
+- When running npm start from backend, both work.
+- index.js's explicit path is the more reliable load for this project because it does not depend on process.cwd().
+
+12. Current Status
+
+Completed:
+- Express server setup.
+- CORS middleware.
+- JSON body parsing.
+- MySQL connection pool.
+- MVC-style separation into routes, controllers, middleware, and config.
+- User registration.
+- Duplicate email check before registration insert.
+- bcrypt password hashing.
+- User login.
+- bcrypt password verification.
+- JWT generation.
+- JWT verification middleware.
+- Protected task routes.
+- User-specific task listing.
+- User-specific task creation.
+- User-specific task update.
+- User-specific task deletion.
+- Controller-level ownership checks for update and delete.
+- MySQL tables for users and tasks.
+- Unique email constraint in database.
+
+Partially completed or implied:
+- Authorization is implemented for tasks, but only at controller-query level.
+- tasks.user_id is treated as a relationship to users.id, but there is no database foreign key.
+- The route file hints at a future GET /tasks/:id endpoint, but it is commented out and no controller is implemented.
+
+Not currently implemented:
+- Input validation.
+- Request sanitization or normalization.
+- Password strength policy.
+- Email normalization.
+- Token refresh.
+- Logout/token invalidation.
+- User profile retrieval.
+- Task completion/status.
+- Due dates, priorities, timestamps, or ordering.
+- Pagination or filtering.
+- Centralized error handler.
+- Tests.
+- Migration files.
+- Seed files.
+- API versioning.
+
+13. Known Issues
+
+Validation gaps:
+- register does not validate required username, email, or password.
+- register does not validate email format.
+- register does not validate password length or strength.
+- login does not validate required email or password.
+- createTask and updateTask do not validate that task exists in the request body.
+- createTask and updateTask do not reject empty strings.
+- createTask and updateTask rely on the database varchar(255) limit rather than checking length before query.
+- req.params.id is not validated as a numeric id for update or delete.
+
+Database issues:
+- There are no migration files, so schema cannot be recreated from source alone.
+- tasks.user_id has no foreign key to users.id.
+- tasks.user_id is nullable even though application-created tasks should always have an owner.
+- tasks.user_id has no index, which can slow SELECT * FROM tasks WHERE user_id = ? as data grows.
+- tasks table has no created_at or updated_at columns.
+- users table has no created_at or updated_at columns.
+
+Authentication/security issues:
+- Current .env contains secrets and must remain ignored.
+- JWT_SECRET existence is not checked at startup.
+- Login returns 404 "User not found", which reveals whether an email is registered.
+- No rate limiting exists for login or registration.
+- No account lockout or brute-force protection exists.
+- CORS is globally permissive with default cors() settings.
+- JWT has no issuer, audience, or token version claim.
+- No token revocation or logout mechanism exists.
+- No HTTPS enforcement is handled in the backend.
+- No Helmet/security headers middleware is configured.
+
+API behavior issues:
+- Message capitalization is inconsistent: "Task created", "Task Updated", "Task Deleted".
+- GET /tasks returns user_id to the client.
+- No centralized 404 handler exists for unknown routes.
+- No centralized error middleware exists for uncaught errors.
+- Controllers use SELECT * instead of explicit columns.
+
+Code/architecture issues:
+- There is no model or service layer; controllers call SQL directly.
+- Repeated try/catch response patterns exist across controllers.
+- userController catch blocks do not log errors, while taskController logs errors.
+- db.js calls dotenv.config() even though index.js already loads .env.
+- DB_PORT exists in .env but is unused.
+- PORT is hardcoded instead of using process.env.PORT.
+- The commented GET /tasks/:id route references a missing future controller.
+
+14. Next Recommended Backend Steps
+
+1. Add schema/migration files for users and tasks so the database can be recreated from source.
+2. Add a foreign key from tasks.user_id to users.id, make tasks.user_id NOT NULL, and consider ON DELETE CASCADE.
+3. Add an index on tasks.user_id for faster per-user task queries.
+4. Add created_at and updated_at columns to users and tasks if audit/history matters.
+5. Add request validation for register, login, create task, update task, and id params.
+6. Normalize email during registration and login, for example trim and lowercase.
+7. Add startup checks for required environment variables.
+8. Use process.env.PORT with fallback to 3000.
+9. Add centralized error handling middleware and a not-found route handler.
+10. Restrict CORS to the actual frontend origin for production.
+11. Add rate limiting to login and registration.
+12. Use generic login errors to avoid email enumeration if security requirements demand it.
+13. Add tests for auth flow, task CRUD, ownership restrictions, and error paths.
+14. Add a GET /tasks/:id endpoint only if the frontend needs single-task retrieval.
+15. Add task fields such as completed/status, priority, due date, or ordering only if required by product needs.
+16. Consider moving SQL into model/repository functions if the backend grows.
+17. Add API versioning such as /api/v1 if external clients will depend on stable contracts.
+
+15. Code Quality Review
+
+Repeated logic:
+- Multiple controllers repeat try/catch and 500 response handling.
+- Auth error responses are centralized in middleware, but controller error responses are not centralized.
+- SQL is embedded directly in controller functions.
+
+Potential improvements:
+- Introduce validation middleware to keep controllers focused on business logic.
+- Use explicit SELECT columns instead of SELECT *.
+- Standardize JSON response casing and message style.
+- Standardize error logging across controllers.
+- Add a small repository/model layer if SQL grows beyond simple CRUD.
+- Add tests before changing behavior, especially for ownership checks.
+- Remove or implement the commented GET /tasks/:id route.
+
+Security improvements:
+- Keep .env out of git and rotate secrets if they were exposed.
+- Validate JWT_SECRET at startup and fail fast if missing.
+- Configure CORS for known origins in production.
+- Add rate limiting to authentication endpoints.
+- Consider returning a generic login failure for both missing user and wrong password.
+- Add Helmet or equivalent security headers.
+- Add database foreign keys and NOT NULL constraints for ownership integrity.
+- Consider token issuer/audience claims if multiple services or clients are introduced.
+
+Most important architectural fact for a handoff agent:
+- The backend is a simple Express/MySQL API where user authentication is JWT-based, task routes are protected by middleware, and task ownership is enforced by SQL conditions using req.user.id. The database currently stores the user/task association but does not enforce it with a foreign key.

@@ -1,0 +1,822 @@
+frontend_context.txt
+
+1. Project Overview
+
+Purpose:
+- This frontend is the React client for a To-Do application.
+- It currently provides a simple task UI that can list, create, edit, and delete tasks through HTTP calls to the backend.
+- The current UI is a single-screen app rendered by App.jsx.
+
+Current functionality:
+- Renders a heading: "Todo App".
+- Renders a task input field.
+- Allows adding a task if the input is not blank after trim().
+- Fetches tasks from the backend when the TaskList component mounts.
+- Displays tasks returned by the backend.
+- Allows entering edit mode for one task at a time.
+- Allows saving edited task text if the edit input is not blank after trim().
+- Allows canceling edit mode.
+- Allows deleting tasks.
+- Logs API errors to the browser console.
+
+Backend integration status:
+- The frontend is hardcoded to call the backend at http://localhost:3000.
+- The task CRUD endpoints are integrated with Axios in src/components/TaskLists.jsx.
+- Authentication APIs are not integrated.
+- The frontend does not send Authorization headers.
+- The current backend task routes are protected by JWT middleware, so the current frontend task API calls will fail with 401 unless the backend is changed or an Authorization: Bearer <token> header is added.
+- No token is stored in localStorage, sessionStorage, cookies, React state, or context.
+- No register page, login page, protected route handling, or dashboard auth flow exists yet.
+
+2. Tech Stack
+
+React version:
+- react: ^19.2.6
+- react-dom: ^19.2.6
+- React is mounted with createRoot from react-dom/client.
+- StrictMode is enabled in src/main.jsx.
+
+Vite:
+- vite: ^8.0.12
+- @vitejs/plugin-react: ^6.0.1
+- Vite config uses defineConfig and the React plugin only.
+- No custom server proxy, aliases, environment variables, or build options are configured.
+
+Axios:
+- axios: ^1.16.1
+- Used directly inside TaskLists.jsx.
+- No shared Axios instance exists.
+- No Axios interceptors exist.
+- No baseURL is configured.
+- Every API call uses a hardcoded absolute URL.
+
+Router:
+- React Router is not installed.
+- There is no react-router-dom dependency.
+- There is no BrowserRouter, Routes, Route, Navigate, Outlet, loader/action, or route config.
+- The app currently has only one rendered view.
+
+Other libraries:
+- Runtime dependencies:
+  - axios
+  - react
+  - react-dom
+- Development dependencies:
+  - @eslint/js
+  - @types/react
+  - @types/react-dom
+  - @vitejs/plugin-react
+  - eslint
+  - eslint-plugin-react-hooks
+  - eslint-plugin-react-refresh
+  - globals
+  - vite
+
+Package scripts:
+- npm run dev: starts the Vite dev server.
+- npm run build: runs vite build.
+- npm run lint: runs eslint .
+- npm run preview: runs vite preview.
+
+Module format:
+- package.json has "type": "module".
+- Frontend source uses ES modules.
+
+3. Folder Structure
+
+Tree view, excluding node_modules internals:
+
+frontend/
+  .gitignore
+  eslint.config.js
+  index.html
+  package.json
+  package-lock.json
+  README.md
+  vite.config.js
+  public/
+    favicon.svg
+    icons.svg
+  src/
+    App.css
+    App.jsx
+    index.css
+    main.jsx
+    assets/
+      hero.png
+      react.svg
+      vite.svg
+    components/
+      TaskLists.jsx
+  dist/
+    favicon.svg
+    icons.svg
+    index.html
+    assets/
+      index-B2PFAZDA.js
+      index-nqMpL4T3.css
+  node_modules/
+    installed dependency directory
+
+Purpose of each file:
+
+frontend/.gitignore
+- Ignores logs, node_modules, dist, dist-ssr, local env files, and common editor/system files.
+- Contains repeated entries for node_modules and dist.
+- Also ignores .env and frontend/node_modules.
+
+frontend/eslint.config.js
+- ESLint flat config.
+- Ignores dist.
+- Applies linting to **/*.{js,jsx}.
+- Extends:
+  - @eslint/js recommended config
+  - react-hooks flat recommended config
+  - react-refresh Vite config
+- Defines browser globals.
+- Enables JSX parser options.
+
+frontend/index.html
+- Vite HTML entry.
+- Defines <div id="root"></div>.
+- Loads /src/main.jsx as the module script.
+- Uses /favicon.svg as the favicon.
+- Has title "frontend".
+
+frontend/package.json
+- Defines dependencies, devDependencies, scripts, module type, and project metadata.
+- Project name is "frontend".
+- Version is "0.0.0".
+- Marked private.
+
+frontend/package-lock.json
+- Locks installed dependency versions.
+
+frontend/README.md
+- Default React + Vite template README.
+- Describes Vite React setup and ESLint expansion suggestions.
+- Does not document this specific To-Do app.
+
+frontend/vite.config.js
+- Imports defineConfig from vite.
+- Imports react from @vitejs/plugin-react.
+- Exports defineConfig({ plugins: [react()] }).
+- No proxy is configured for backend API calls.
+
+frontend/public/favicon.svg
+- Public favicon served at /favicon.svg.
+- Used by index.html.
+
+frontend/public/icons.svg
+- SVG symbol sprite containing social/documentation icons.
+- Currently not imported or referenced by the React app.
+- Appears to be leftover/template-support asset.
+
+frontend/src/main.jsx
+- React entry point.
+- Imports StrictMode from react.
+- Imports createRoot from react-dom/client.
+- Imports global styles from ./index.css.
+- Imports App from ./App.jsx.
+- Mounts <App /> inside <StrictMode> into document.getElementById("root").
+
+frontend/src/App.jsx
+- Top-level React component.
+- Imports TaskList from ./components/TaskLists.
+- Renders a div containing:
+  - h1 "Todo App"
+  - <TaskList />
+
+frontend/src/index.css
+- Active global stylesheet because main.jsx imports it.
+- Defines CSS custom properties for colors, typefaces, shadow, and layout.
+- Defines light/dark color variables using prefers-color-scheme.
+- Styles body, #root, h1, h2, p, code, and .counter.
+- #root is centered, constrained to 1126px max width, bordered inline, and uses flex column layout.
+- h1 and h2 have responsive font sizes.
+- Some styles such as .counter appear unused by current JSX.
+
+frontend/src/App.css
+- Not imported anywhere in the current source.
+- Currently inactive.
+- Contains template-like styles for .counter, .hero, #center, #next-steps, #docs, #spacer, and .ticks.
+- Since App.jsx does not import App.css and current JSX does not use these selectors, this file has no effect on the rendered app.
+
+frontend/src/assets/hero.png
+- Image asset in source assets.
+- Currently not imported or rendered.
+
+frontend/src/assets/react.svg
+- React logo asset.
+- Currently not imported or rendered.
+
+frontend/src/assets/vite.svg
+- Vite logo asset.
+- Currently not imported or rendered.
+
+frontend/src/components/TaskLists.jsx
+- Contains the task CRUD UI and all current frontend API calls.
+- File name is plural TaskLists.jsx, but the default exported component function is named TaskList.
+
+frontend/dist/
+- Generated Vite build output.
+- Contains built index.html, copied public SVG files, bundled JS, and bundled CSS.
+- Should be treated as generated output, not source of truth for development.
+
+4. Components Documentation
+
+Component: App
+
+File:
+- src/App.jsx
+
+Purpose:
+- Top-level application component.
+- Provides the current single-view layout.
+- Renders the page title and the TaskList component.
+
+State used:
+- None.
+
+Props used:
+- None.
+
+API calls made:
+- None directly.
+- API calls are delegated to TaskList.
+
+Rendered structure:
+
+```jsx
+<div>
+  <h1>Todo App</h1>
+  <TaskList />
+</div>
+```
+
+Important notes:
+- App does not import App.css.
+- App does not provide context, routing, auth state, or layout components.
+- App does not pass props to TaskList.
+
+Component: TaskList
+
+File:
+- src/components/TaskLists.jsx
+
+Purpose:
+- Displays task list UI.
+- Manages task list state, new task input state, edit mode state, and edit input state.
+- Performs all current frontend API calls to the backend /tasks endpoints.
+
+State used:
+- tasks
+  - Initial value: []
+  - Setter: setTasks
+  - Purpose: stores task rows returned by GET http://localhost:3000/tasks.
+- newTask
+  - Initial value: ""
+  - Setter: setNewTask
+  - Purpose: stores the text typed into the create-task input.
+- editingId
+  - Initial value: null
+  - Setter: setEditingId
+  - Purpose: stores the id of the task currently being edited.
+  - When editingId equals a task's id, that task renders edit controls instead of normal display controls.
+- editTask
+  - Initial value: ""
+  - Setter: setEditTask
+  - Purpose: stores the edited text for the task currently in edit mode.
+
+Props used:
+- None.
+
+Effects used:
+- useEffect(() => { fetchTasks(); }, [])
+- Runs fetchTasks after the component mounts.
+- Because main.jsx wraps the app in React StrictMode, this effect may run more than once in development mode depending on React's development behavior.
+
+API calls made:
+- GET http://localhost:3000/tasks
+  - Function: fetchTasks
+  - Response handling: setTasks(response.data)
+  - Error handling: console.log(error)
+- POST http://localhost:3000/tasks
+  - Function: addTask
+  - Body: { task: newTask }
+  - After success: clears newTask and calls fetchTasks()
+  - Error handling: console.log(error)
+- DELETE http://localhost:3000/tasks/:id
+  - Function: deleteTask
+  - Path parameter: id
+  - After success: calls fetchTasks()
+  - Error handling: console.log(error)
+- PUT http://localhost:3000/tasks/:id
+  - Function: updateTask
+  - Path parameter: id
+  - Body: { task: editTask }
+  - After success: clears editingId, clears editTask, and calls fetchTasks()
+  - Error handling: console.log(error)
+
+Headers sent:
+- No custom headers are sent.
+- No Authorization header is sent.
+- Axios will send JSON content type for POST/PUT request bodies.
+
+Rendered UI:
+- Create input:
+  - type="text"
+  - placeholder="Enter task"
+  - value={newTask}
+  - onChange updates newTask.
+- Add Task button:
+  - Calls addTask.
+- h2 "Tasks".
+- For each task in tasks:
+  - The wrapper div uses key={task.id}.
+  - If editingId === task.id:
+    - Renders edit input controlled by editTask.
+    - Save button calls updateTask(task.id).
+    - Cancel button clears editingId and editTask.
+  - Otherwise:
+    - Renders <p>{task.task}</p>.
+    - Edit button sets editingId to task.id and pre-fills editTask with task.task.
+    - Delete button calls deleteTask(task.id).
+
+Input validation currently implemented:
+- addTask returns early if !newTask.trim().
+- updateTask returns early if !editTask.trim().
+
+Input validation missing:
+- No max length validation.
+- No visible validation message.
+- No trimming before sending to the backend; the trim check only prevents all-whitespace values.
+- No validation for task ids.
+
+Error handling currently implemented:
+- API errors are logged to console.
+
+Error handling missing:
+- No visible error messages.
+- No retry UI.
+- No user feedback for 401 Unauthorized.
+- No user feedback for failed create/update/delete.
+
+5. Pages Documentation
+
+Current page/view: Single To-Do view
+
+Implemented as:
+- App.jsx plus TaskList.
+
+Purpose:
+- Show the current to-do interface.
+- Allow task CRUD operations through the backend.
+
+User flow:
+1. User opens the app.
+2. main.jsx mounts App.
+3. App renders "Todo App" and TaskList.
+4. TaskList runs fetchTasks on mount.
+5. TaskList attempts GET http://localhost:3000/tasks.
+6. Tasks from response.data are placed into tasks state.
+7. User types a task into the input.
+8. User clicks Add Task.
+9. addTask sends POST http://localhost:3000/tasks with { task: newTask }.
+10. On success, newTask is cleared and fetchTasks refreshes the list.
+11. User clicks Edit on a task.
+12. That row switches to edit mode and pre-fills editTask.
+13. User clicks Save.
+14. updateTask sends PUT http://localhost:3000/tasks/:id with { task: editTask }.
+15. On success, edit mode is cleared and fetchTasks refreshes the list.
+16. User clicks Delete.
+17. deleteTask sends DELETE http://localhost:3000/tasks/:id.
+18. On success, fetchTasks refreshes the list.
+
+Pages not currently implemented:
+- Register page.
+- Login page.
+- Dashboard page separate from TaskList.
+- Protected route wrapper.
+- Not found page.
+- Error page.
+
+6. API Integration
+
+General API integration:
+- All active API calls are in src/components/TaskLists.jsx.
+- API base URL is hardcoded repeatedly as http://localhost:3000.
+- No environment variable such as VITE_API_URL is used.
+- No shared API service module exists.
+- No Axios instance exists.
+- No interceptors exist.
+- No credentials/cookies options are configured.
+- No Authorization header is currently sent.
+
+GET Tasks:
+- Current frontend function: fetchTasks
+- Current request:
+
+```js
+axios.get("http://localhost:3000/tasks")
+```
+
+- Current request body: none.
+- Current custom headers: none.
+- Current success behavior:
+  - setTasks(response.data)
+- Current error behavior:
+  - console.log(error)
+- Backend expectation:
+  - GET /tasks is protected.
+  - Requires Authorization: Bearer <jwt_token>.
+- Integration gap:
+  - Frontend does not send JWT, so the request will fail against the current protected backend.
+
+Create Task:
+- Current frontend function: addTask
+- Current request:
+
+```js
+axios.post("http://localhost:3000/tasks", {
+  task: newTask,
+})
+```
+
+- Current request body:
+
+```json
+{
+  "task": "task text from newTask state"
+}
+```
+
+- Current custom headers: none.
+- Current frontend validation:
+  - Does nothing if newTask.trim() is empty.
+- Current success behavior:
+  - setNewTask("")
+  - fetchTasks()
+- Current error behavior:
+  - console.log(error)
+- Backend expectation:
+  - POST /tasks is protected.
+  - Requires Authorization: Bearer <jwt_token>.
+  - Expects JSON body with task.
+- Integration gap:
+  - Frontend does not send JWT.
+
+Update Task:
+- Current frontend function: updateTask
+- Current request:
+
+```js
+axios.put(`http://localhost:3000/tasks/${id}`, {
+  task: editTask,
+})
+```
+
+- Current request body:
+
+```json
+{
+  "task": "task text from editTask state"
+}
+```
+
+- Current custom headers: none.
+- Current frontend validation:
+  - Does nothing if editTask.trim() is empty.
+- Current success behavior:
+  - setEditingId(null)
+  - setEditTask("")
+  - fetchTasks()
+- Current error behavior:
+  - console.log(error)
+- Backend expectation:
+  - PUT /tasks/:id is protected.
+  - Requires Authorization: Bearer <jwt_token>.
+  - Expects JSON body with task.
+- Integration gap:
+  - Frontend does not send JWT.
+
+Delete Task:
+- Current frontend function: deleteTask
+- Current request:
+
+```js
+axios.delete(`http://localhost:3000/tasks/${id}`)
+```
+
+- Current request body: none.
+- Current custom headers: none.
+- Current success behavior:
+  - fetchTasks()
+- Current error behavior:
+  - console.log(error)
+- Backend expectation:
+  - DELETE /tasks/:id is protected.
+  - Requires Authorization: Bearer <jwt_token>.
+- Integration gap:
+  - Frontend does not send JWT.
+
+Authentication APIs:
+- Current frontend implementation:
+  - No register API call.
+  - No login API call.
+  - No logout behavior.
+  - No current-user API call.
+  - No token refresh API call.
+- Backend APIs available from current backend:
+  - POST http://localhost:3000/users/register
+  - POST http://localhost:3000/users/login
+- Current frontend integration status:
+  - Not implemented.
+
+7. State Management
+
+State strategy:
+- Local React component state only.
+- No Redux, Zustand, MobX, Jotai, Recoil, TanStack Query, SWR, React Context, or reducer pattern is used.
+- All state is inside TaskList.
+
+useState usage:
+- tasks:
+  - Stores the server-returned task array.
+  - Updated only by fetchTasks after a successful GET request.
+- newTask:
+  - Stores the create input value.
+  - Updated on every create input change.
+  - Cleared after successful POST.
+- editingId:
+  - Stores which task is currently being edited.
+  - Set when user clicks Edit.
+  - Cleared after Save or Cancel.
+- editTask:
+  - Stores the edit input value.
+  - Set to task.task when user clicks Edit.
+  - Updated on every edit input change.
+  - Cleared after Save or Cancel.
+
+useEffect usage:
+- TaskList uses one useEffect with empty dependency array.
+- It calls fetchTasks when the component mounts.
+- No cleanup function is used.
+- No AbortController is used to cancel in-flight requests on unmount.
+- No dependencies are included because fetchTasks is defined in component scope and the current code intentionally runs the effect only on mount.
+
+Data flow:
+1. User interacts with inputs/buttons.
+2. Event handlers update local component state or call Axios.
+3. Axios sends request to backend.
+4. On successful mutation, TaskList calls fetchTasks again.
+5. fetchTasks replaces tasks state with the backend response.
+6. React re-renders the list from tasks state.
+
+Current refresh strategy:
+- Re-fetch after create.
+- Re-fetch after update.
+- Re-fetch after delete.
+- No optimistic updates.
+- No cache.
+- No polling.
+- No stale/revalidate strategy.
+
+8. Current User Flow
+
+User
+-> Opens frontend in browser.
+-> Sees "Todo App", create input, Add Task button, and "Tasks" heading.
+-> Enters task text.
+-> Clicks Add Task.
+-> Clicks Edit/Delete on listed tasks as needed.
+
+Frontend
+-> main.jsx renders App inside StrictMode.
+-> App renders TaskList.
+-> TaskList keeps task/input/edit state in useState.
+-> TaskList uses Axios for task CRUD calls.
+
+API
+-> Frontend calls hardcoded URLs under http://localhost:3000/tasks.
+-> Frontend does not call /users/register or /users/login.
+-> Frontend does not attach Authorization headers.
+
+Backend
+-> Current backend expects JWT authorization for /tasks routes.
+-> Current frontend does not satisfy that requirement.
+-> If backend auth middleware is active, task calls return 401.
+
+Database
+-> When authorized requests eventually reach the backend, backend reads/writes MySQL tasks.
+-> Current frontend has no direct database access.
+
+9. Authentication Integration Status
+
+Implemented:
+- No authentication UI is implemented.
+- No authentication API integration is implemented.
+- No token persistence is implemented.
+- No protected frontend routing is implemented.
+- No logout is implemented.
+- No auth state is implemented.
+
+Missing:
+- Register form/page.
+- Login form/page.
+- Calls to POST /users/register.
+- Calls to POST /users/login.
+- Storage for returned JWT.
+- Authorization header on task API calls.
+- Authenticated user state.
+- Logout flow.
+- Protected route behavior.
+- Redirects between login/register/dashboard.
+- Handling for expired or invalid token.
+- Handling for 401 responses from task endpoints.
+
+Planned based on requested roadmap:
+- Add React Router.
+- Add Register Page.
+- Add Login Page.
+- Add Protected Routes.
+- Add Axios Interceptors.
+- Add Dashboard.
+
+Important integration note:
+- The backend currently returns a JWT from POST /users/login.
+- The frontend must store that token and send it as Authorization: Bearer <token> for every /tasks request.
+- Until that is done, the current TaskList CRUD UI is not fully integrated with the current backend auth system.
+
+10. UI Status
+
+Completed:
+- Basic app title.
+- Basic task create input.
+- Basic Add Task button.
+- Basic task list rendering.
+- Basic inline edit controls.
+- Basic Save and Cancel controls.
+- Basic Delete button.
+- Global typography/root layout styles from index.css.
+- Light/dark color variables in index.css.
+
+Not completed:
+- Login UI.
+- Register UI.
+- Dashboard layout.
+- Navigation.
+- Protected route loading/redirect UI.
+- Error messages.
+- Loading indicators.
+- Empty state message.
+- Disabled states while requests are in flight.
+- Confirmation for delete.
+- Responsive task-specific layout polish.
+- Accessible labels for form controls.
+- App-specific styling for task rows/buttons/forms.
+
+Style/assets status:
+- index.css is active.
+- App.css is inactive because it is not imported.
+- public/favicon.svg is active through index.html.
+- public/icons.svg is not used.
+- src/assets/hero.png is not used.
+- src/assets/react.svg is not used.
+- src/assets/vite.svg is not used.
+- Current UI relies mostly on browser default form/button styling plus global root/heading styles.
+
+11. Current Features
+
+Completed frontend functionality:
+- React app bootstrapping with Vite.
+- App mounted into #root.
+- StrictMode enabled.
+- Single To-Do view.
+- Fetch tasks on TaskList mount.
+- Display tasks from backend response.
+- Add task through POST /tasks.
+- Prevent adding blank/whitespace-only tasks.
+- Delete task through DELETE /tasks/:id.
+- Enter edit mode for a task.
+- Pre-fill edit input with existing task text.
+- Save edited task through PUT /tasks/:id.
+- Prevent saving blank/whitespace-only edits.
+- Cancel edit mode.
+- Re-fetch tasks after successful create/update/delete.
+- Console logging for request errors.
+
+12. Known Issues
+
+Bugs/integration problems:
+- Task API calls do not include JWT Authorization headers.
+- Current task API calls will fail against the current protected backend.
+- Authentication APIs exist in the backend but are not used by the frontend.
+- App.css is present but unused.
+- Several source/public assets are present but unused.
+- The active component file is named TaskLists.jsx but exports TaskList, which is mildly confusing.
+
+Missing validation:
+- No visible validation message for blank task input.
+- No visible validation message for blank edit input.
+- No max length checks before sending task text.
+- No client-side handling for backend validation/database errors.
+- No id validation before update/delete calls.
+
+Missing loading states:
+- No loading state while fetching initial tasks.
+- No loading state while adding a task.
+- No loading state while updating a task.
+- No loading state while deleting a task.
+- No disabled buttons during in-flight requests.
+- No progress or skeleton UI.
+
+Missing error handling:
+- Errors are only logged with console.log.
+- No user-visible error text.
+- No special handling for 401 Unauthorized.
+- No redirect to login when unauthorized.
+- No retry button.
+- No network-offline handling.
+- No failed mutation recovery.
+
+UX/accessibility issues:
+- Inputs do not have visible labels, only placeholders.
+- Buttons do not indicate loading or disabled state.
+- Delete has no confirmation.
+- There is no empty state when tasks is [].
+- There is no differentiation between "no tasks" and "failed to load tasks".
+- No keyboard focus management when entering/canceling edit mode.
+
+Architecture/maintainability issues:
+- API URLs are hardcoded in the component.
+- No shared API client module.
+- No Axios instance.
+- No Axios interceptors.
+- No environment-based API base URL.
+- No router or page structure.
+- No separation between UI component and API logic.
+- No tests.
+
+Development/build notes:
+- dist exists and contains generated build output.
+- Because dist is generated, future agents should edit src files rather than dist files.
+- README is still the default Vite README and does not explain this app.
+
+13. Next Recommended Frontend Steps
+
+1. Add React Router.
+2. Create a route structure for public auth pages and private app pages.
+3. Add Register Page.
+4. Connect Register Page to POST http://localhost:3000/users/register.
+5. Add Login Page.
+6. Connect Login Page to POST http://localhost:3000/users/login.
+7. Store the returned JWT after successful login.
+8. Add Protected Routes so task UI is only available to authenticated users.
+9. Create a shared Axios client with a baseURL.
+10. Move hardcoded http://localhost:3000 into an environment variable such as VITE_API_URL.
+11. Add Axios request interceptor to attach Authorization: Bearer <token>.
+12. Add Axios response interceptor or centralized handling for 401 responses.
+13. Move TaskList into a Dashboard page or render it from the protected dashboard route.
+14. Add logout behavior that clears the token and redirects to login.
+15. Add loading states for fetch/create/update/delete.
+16. Add user-visible error messages.
+17. Add empty state UI for no tasks.
+18. Add form validation messages.
+19. Add accessible labels and improved focus behavior.
+20. Clean up unused App.css and unused assets if they are not needed.
+21. Add tests for task rendering, add/edit/delete interactions, auth redirects, and API error states.
+
+Requested roadmap items mapped to current state:
+- React Router: missing.
+- Register Page: missing.
+- Login Page: missing.
+- Protected Routes: missing.
+- Axios Interceptors: missing.
+- Dashboard: missing as a separate page; current TaskList is effectively the dashboard content but is not routed/protected.
+
+14. Integration Notes
+
+Everything another AI needs to know before continuing development:
+- The frontend source of truth is under frontend/src.
+- The app currently has only two authored React components:
+  - App in src/App.jsx
+  - TaskList in src/components/TaskLists.jsx
+- TaskList contains all task API logic.
+- No authentication state exists yet.
+- No routing exists yet.
+- No backend URL abstraction exists yet.
+- The current backend base URL expected by frontend code is http://localhost:3000.
+- The current backend task routes require JWT auth, but the frontend does not send JWT auth.
+- The login endpoint that should provide the token is POST http://localhost:3000/users/login.
+- The register endpoint is POST http://localhost:3000/users/register.
+- The token must be attached to task requests as Authorization: Bearer <token>.
+- A future AI should avoid editing dist because it is generated build output.
+- A future AI should avoid assuming App.css is active; it is not imported.
+- A future AI should check whether the backend is running on port 3000 before testing API calls.
+- A future AI should decide whether to keep the component filename TaskLists.jsx or rename it for consistency if refactoring is allowed.
+- A future AI should introduce auth/routing carefully because the current app is very small and direct.
+
+15. Development Handoff Summary
+
+The frontend is a minimal Vite + React 19 app. It renders a single To-Do screen with local component state and direct Axios calls for task CRUD. The task UI is structurally present, but full backend integration is currently incomplete because the backend protects /tasks with JWT auth and the frontend has no login/register/token handling. There is no router, no auth flow, no protected dashboard, no Axios client abstraction, no loading UI, and no visible error handling. The next development work should focus on authentication integration, route structure, protected dashboard access, shared API configuration, and UI feedback states.

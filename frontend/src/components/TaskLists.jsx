@@ -1,5 +1,13 @@
 import { useEffect, useState } from "react";
-import axios from "axios";
+import {
+  Plus,
+  Pencil,
+  Trash2,
+  Save,
+  X,
+  ClipboardList,
+} from "lucide-react";
+import api from "../services/api";
 
 function TaskList() {
   const [tasks, setTasks] = useState([]);
@@ -13,7 +21,7 @@ function TaskList() {
 
   const fetchTasks = async () => {
     try {
-      const response = await axios.get("http://localhost:3000/tasks");
+      const response = await api.get("/tasks");
       setTasks(response.data);
     } catch (error) {
       console.log(error);
@@ -24,7 +32,7 @@ function TaskList() {
     if (!newTask.trim()) return;
 
     try {
-      await axios.post("http://localhost:3000/tasks", {
+      await api.post("/tasks", {
         task: newTask,
       });
 
@@ -37,7 +45,7 @@ function TaskList() {
 
   const deleteTask = async (id) => {
     try {
-      await axios.delete(`http://localhost:3000/tasks/${id}`);
+      await api.delete(`/tasks/${id}`);
       fetchTasks();
     } catch (error) {
       console.log(error);
@@ -48,13 +56,12 @@ function TaskList() {
     if (!editTask.trim()) return;
 
     try {
-      await axios.put(`http://localhost:3000/tasks/${id}`, {
+      await api.put(`/tasks/${id}`, {
         task: editTask,
       });
 
       setEditingId(null);
       setEditTask("");
-
       fetchTasks();
     } catch (error) {
       console.log(error);
@@ -63,60 +70,119 @@ function TaskList() {
 
   return (
     <div>
-      <input
-        type="text"
-        placeholder="Enter task"
-        value={newTask}
-        onChange={(e) => setNewTask(e.target.value)}
-      />
+      <div className="task-input-section">
+        <input
+          className="input"
+          type="text"
+          placeholder="Add a new task..."
+          value={newTask}
+          onChange={(e) =>
+            setNewTask(e.target.value)
+          }
+        />
 
-      <button onClick={addTask}>Add Task</button>
+        <button
+          className="btn btn-primary"
+          onClick={addTask}
+        >
+          <Plus size={16} />
+          Add Task
+        </button>
+      </div>
 
-      <h2>Tasks</h2>
+      <div className="task-header">
+        <h2>Tasks</h2>
 
-      {tasks.map((task) => (
-        <div key={task.id}>
-          {editingId === task.id ? (
-            <>
-              <input
-                type="text"
-                value={editTask}
-                onChange={(e) => setEditTask(e.target.value)}
-              />
+        <span className="task-count">
+          {tasks.length}
+        </span>
+      </div>
 
-              <button onClick={() => updateTask(task.id)}>
-                Save
-              </button>
+      {tasks.length === 0 && (
+        <div className="empty-state">
+          <ClipboardList size={60} />
 
-              <button
-                onClick={() => {
-                  setEditingId(null);
-                  setEditTask("");
-                }}
-              >
-                Cancel
-              </button>
-            </>
-          ) : (
-            <>
-              <p>{task.task}</p>
+          <h3>No Tasks Yet</h3>
 
-              <button
-                onClick={() => {
-                  setEditingId(task.id);
-                  setEditTask(task.task);
-                }}
-              >
-                Edit
-              </button>
-
-              <button onClick={() => deleteTask(task.id)}>
-                Delete
-              </button>
-            </>
-          )}
+          <p>
+            Create your first task and start
+            organizing your work.
+          </p>
         </div>
-      ))}
+      )}
+
+      <div className="task-list">
+        {tasks.map((task) => (
+          <div
+            key={task.id}
+            className="task-card"
+          >
+            {editingId === task.id ? (
+              <>
+                <input
+                  className="input"
+                  value={editTask}
+                  onChange={(e) =>
+                    setEditTask(e.target.value)
+                  }
+                />
+
+                <div className="task-actions">
+                  <button
+                    className="btn btn-primary"
+                    onClick={() =>
+                      updateTask(task.id)
+                    }
+                  >
+                    <Save size={16} />
+                    Save
+                  </button>
+
+                  <button
+                    className="btn btn-secondary"
+                    onClick={() => {
+                      setEditingId(null);
+                      setEditTask("");
+                    }}
+                  >
+                    <X size={16} />
+                    Cancel
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="task-text">
+                  {task.task}
+                </p>
+
+                <div className="task-actions">
+                  <button
+                    className="btn btn-secondary"
+                    onClick={() => {
+                      setEditingId(task.id);
+                      setEditTask(task.task);
+                    }}
+                  >
+                    <Pencil size={16} />
+                    Edit
+                  </button>
+
+                  <button
+                    className="btn btn-danger"
+                    onClick={() =>
+                      deleteTask(task.id)
+                    }
+                  >
+                    <Trash2 size={16} />
+                    Delete
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

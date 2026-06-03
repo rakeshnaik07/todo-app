@@ -5,11 +5,14 @@ const pool = require('../config/db');
 const getAllTasks = async (req, res) => {
     try {
 
-        const [rows] = await pool.query(
-            'SELECT * FROM tasks'
+        const userId = req.user.id;
+
+        const [tasks] = await pool.query(
+            'SELECT * FROM tasks WHERE user_id = ?',
+            [userId]
         );
 
-        res.json(rows);
+        res.json(tasks);
 
     } catch (error) {
 
@@ -18,37 +21,6 @@ const getAllTasks = async (req, res) => {
         res.status(500).json({
             message: 'Server Error'
         });
-    }
-};
-
-
-const getTaskById = async (req, res) => {
-
-    try {
-
-        const id = req.params.id;
-
-        const [rows] = await pool.query(
-            'SELECT * FROM tasks WHERE id = ?',
-            [id]
-        );
-
-        if (rows.length === 0) {
-            return res.status(404).json({
-                message: 'Task not found'
-            });
-        }
-
-        res.json(rows[0]);
-
-    } catch (error) {
-
-        console.log(error);
-
-        res.status(500).json({
-            message: 'Server Error'
-        });
-
     }
 };
 
@@ -57,10 +29,11 @@ const createTask = async (req, res) => {
     try {
 
         const {task} = req.body;
+        const userId = req.user.id;
 
         const [result] = await pool.query(
-            'INSERT INTO tasks(task) VALUES (?)',
-            [task]
+            'INSERT INTO tasks(task, user_id) VALUES (?, ?)',
+            [task, userId]
         );
 
         res.status(201).json({
@@ -83,14 +56,16 @@ const updateTask = async (req, res) => {
 
     try {
 
-        const id = req.params.id;
-        const { task } = req.body;
+        const userId = req.user.id;
+        const taskId = req.params.id;
+        const {task} = req.body;
 
         const [result] = await pool.query(
             `UPDATE tasks
              SET task = ?
-             WHERE id = ?`,
-            [task, id]
+             WHERE id = ?
+             AND user_id = ?`,
+            [task, taskId, userId]
         );
 
         if (result.affectedRows === 0) {
@@ -117,11 +92,13 @@ const updateTask = async (req, res) => {
 const deleteTask = async (req, res) => {
 
     try{
-    const id = req.params.id;
+    const taskId = req.params.id;
+    const userId = req.user.id;
     const [results] = await pool.query(
         `DELETE FROM tasks
-        WHERE id = ?`,
-        [id]
+        WHERE id = ?
+        AND user_id = ?`,
+        [taskId, userId]
     )
     if (results.affectedRows === 0) {
     return res.status(404).json({
@@ -145,7 +122,6 @@ const deleteTask = async (req, res) => {
 
 module.exports = {
     getAllTasks,
-    getTaskById,
     createTask,
     updateTask,
     deleteTask
